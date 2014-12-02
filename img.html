@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh_cmn">
+<head>
+    <meta charset=utf-8 />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+    <title>绘图</title>
+    <script type="text/javascript" src="fabric.js"></script>
+    <style>
+        body{position: relative;font-size: 12px;}
+        .upper-canvas {border-width: 0 !important;cursor: default !important;}
+        .tool-wrap{width: 260px;height: 600px;position: absolute;left: 0;top: 0;border: 1px solid #ddd;}
+        .pre-wrap{width: auto;height: auto;max-width:600px;position: absolute;right: 0;top: 0;border: 1px solid #ddd;}
+        .canvas-container{margin: 0 auto;overflow: hidden;border: 1px solid #ddd;}
+
+        .tool-wrap .t-item{border-bottom: 1px solid #ddd;padding: 10px;}
+        .tool-wrap .label{width: 100px;display: inline-block;text-align: right;}
+        #range-size,#range-gip{margin: 0; vertical-align: middle;width: 100px;}
+        #preview-img{width: 100%;}
+        .hidden{display: none;}
+
+    </style>
+</head>
+<body>
+    <div class="tool-wrap">
+        <div class="t-item">
+            <span class="label">移动图片：</span>
+            <input type="checkbox" id="move">
+        </div>
+        <div class="t-item">
+            <span class="label">图片：</span>
+            <select id="range-img">
+                <option value="3.png">灰</option>
+                <option value="4.png">白</option>
+                <option value="5.png">黑</option>
+                <option value="6.png">红</option>
+                <option value="0.png">白底</option>
+                <option value="1.png">蓝底</option>
+                <option value="2.png">红底</option>
+            </select>
+        </div>
+        <div class="t-item">
+            <span class="label">大小：</span>
+            <input id="range-size" type="range" step="2" min="2" max="50" value="10">
+        </div>
+        <div class="t-item">
+            <span class="label">图片压缩精度：</span>
+            <input id="range-gip" type="range" step="1" min="1" max="10" value="10">
+        </div>
+        <div class="t-item">
+            <span class="label"></span>
+            <input id="btn-clear" type="button" value="清空">
+        </div>
+        <div class="t-item">
+            <span class="label"></span>
+            <input id="btn-save" type="button" value="保存">
+            <input id="btn-preview" type="button" value="预览">
+        </div>
+    </div>
+    <div class="pre-wrap">
+        <img id="preview-img"/>
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+</body>
+</html>
+
+<script>
+    function $id(id){
+        return document.getElementById(id);
+    }
+
+    //裁剪图片
+    function scaleCanvas (canvas,img) {
+		var width = canvas.width,
+			height = canvas.height,
+			currentWidth=img.currentWidth,
+			currentHeight=img.currentHeight,
+			top=Math.max(img.top,0),
+			left=Math.max(img.left,0);
+
+		var retCanvas = document.createElement('canvas');
+		var retCtx = retCanvas.getContext('2d');
+		retCanvas.width = currentWidth;
+		retCanvas.height = currentHeight;
+		retCtx.drawImage(canvas, left, top, currentWidth, currentHeight, 0, 0, currentWidth, currentHeight);
+		return retCanvas;
+	}
+    
+
+    (function() {
+        var canvas = new fabric.Canvas('canvas');
+        //fabric.Object.prototype.transparentCorners = false;
+        canvas.isDrawingMode=!$id("move").checked;
+
+        //页面初始化
+        function init(){
+            var m,n;
+            fabric.Image.fromURL('card1.png', function(img) {
+            	//图片调整大小
+            	if(img.height>400){
+            		img.width=Math.round(img.width*400/img.height);
+            		img.height=400;
+            	}
+                canvas.add(img).setActiveObject(img);
+                canvas.on({
+				    'mouse:up': function(e) {
+				      if (e.target) {
+				      	e.target.left=Math.max(e.target.left,0);
+				      	e.target.top=Math.max(e.target.top,0);
+				        canvas.renderAll();
+				      }
+				    },
+				    'object:moved': function(e) {},
+				    'object:modified': function(e) {}
+				});
+
+		        $id("btn-save").onclick = function() {
+		            var baseData=canvas.toDataURL('image/jpeg').replace("image/png", "image/jpeg");
+		            alert(baseData);
+		        };
+
+		        $id("btn-preview").onclick = function() {
+		        	var gip=+$id("range-gip").value;
+		            var baseData=scaleCanvas(canvas.lowerCanvasEl,img).toDataURL('image/jpeg',gip/10).replace("image/png", "image/jpeg");
+		            $id("preview-img").src=baseData;
+		        };
+            });
+		    m=document.querySelector(".upper-canvas");
+			n=$id("range-size").value;
+		    m.style.marginTop=n/2+"px"
+		    m.style.marginLeft=n/2+"px"
+        }
+        init();
+
+
+        var img = new Image();
+        img.src = $id("range-img").value;
+        var texturePatternBrush = new fabric.PatternBrush(canvas);
+        texturePatternBrush.source = img;
+        canvas.freeDrawingBrush = texturePatternBrush;
+        canvas.freeDrawingBrush.width =$id("range-size").value;
+
+
+        //调整画笔大小
+        $id("range-size").onchange=function(){
+        	var q=document.querySelector( ".upper-canvas");
+        	var range=canvas.freeDrawingBrush.width = $id("range-size").value;
+            q.style.marginTop=range/2+"px"
+            q.style.marginLeft=range/2+"px"
+        };
+
+        //调整画笔颜色
+        $id("range-img").onchange=function(){
+            var img = new Image();
+            img.src = $id("range-img").value;
+            texturePatternBrush.source = img;
+        };
+
+        //是否移动图片
+        $id("move").onchange=function(){
+            canvas.isDrawingMode = !$id("move").checked;
+        };
+
+        //清空画布
+        $id("btn-clear").onclick = function() {
+            init();
+            canvas.clear();
+        };
+    })();
+</script>
